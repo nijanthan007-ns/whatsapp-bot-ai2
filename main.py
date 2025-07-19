@@ -4,7 +4,7 @@ import tempfile
 from bs4 import BeautifulSoup
 from fastapi import FastAPI, Request
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_community.chat_models import ChatOpenAI
 from langchain.text_splitter import CharacterTextSplitter
