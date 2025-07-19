@@ -1,7 +1,6 @@
 langchain
 langchain-community
 openai
-ultramsg
 pypdf
 faiss-cpu
 beautifulsoup4
