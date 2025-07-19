@@ -5,3 +5,5 @@ pypdf
 faiss-cpu
 beautifulsoup4
 requests
+fastapi
+uvicorn
