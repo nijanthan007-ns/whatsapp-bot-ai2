@@ -1,8 +1,8 @@
-flask
-requests
 langchain
-openai
-faiss-cpu
-tiktoken
 langchain-community
+openai
+ultramsg
 pypdf
+faiss-cpu
+beautifulsoup4
+requests
