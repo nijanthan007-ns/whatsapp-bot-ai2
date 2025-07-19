@@ -1,9 +1,9 @@
 langchain==0.1.16
 langchain-community==0.0.32
 langchain-openai==0.0.8
-tiktoken==0.5.2
 openai==1.10.0
 faiss-cpu
+tiktoken==0.6.0
 fastapi
 uvicorn
 requests
