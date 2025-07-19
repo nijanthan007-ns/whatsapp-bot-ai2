@@ -1,67 +1,80 @@
 import os
 import requests
-from flask import Flask, request
+import tempfile
+from bs4 import BeautifulSoup
+from fastapi import FastAPI, Request
 from langchain_community.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import FAISS
-from langchain.chains import RetrievalQA
+from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_community.vectorstores import FAISS
 from langchain_community.chat_models import ChatOpenAI
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.chains import RetrievalQA
 
-OPENAI_API_KEY = "sk-proj-..."  # Replace with your real key
-ULTRAMSG_INSTANCE_ID = "instance133623"
-ULTRAMSG_TOKEN = "shnmtd393b5963kq"
-GITHUB_DOCS_URL = "https://raw.githubusercontent.com/your-username/your-repo-name/main/docs/"  # Update this
+app = FastAPI()
 
-app = Flask(__name__)
-os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+GITHUB_DOCS_URL = "https://raw.githubusercontent.com/nijanthan007-ns/whatsapp-bot-ai2/main/docs/"
+GITHUB_HTML_URL = "https://github.com/nijanthan007-ns/whatsapp-bot-ai2/tree/main/docs"
+
+def get_all_pdf_filenames_from_github():
+    r = requests.get(GITHUB_HTML_URL)
+    soup = BeautifulSoup(r.text, "html.parser")
+    pdfs = []
+
+    for link in soup.find_all("a", href=True):
+        href = link["href"]
+        if href.endswith(".pdf"):
+            filename = href.split("/")[-1]
+            pdfs.append(filename)
+
+    return pdfs
 
 def load_documents():
-    import tempfile
     docs = []
-    filenames = [
-        "machine_manual1.pdf",
-        "wiring_guide.pdf"
-        # Add more PDF names here
-    ]
+    filenames = get_all_pdf_filenames_from_github()
     for filename in filenames:
         url = f"{GITHUB_DOCS_URL}{filename}"
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        try:
             r = requests.get(url)
-            tmp.write(r.content)
-            loader = PyPDFLoader(tmp.name)
-            docs.extend(loader.load())
+            if r.status_code == 200 and len(r.content) > 1000:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                    tmp.write(r.content)
+                    loader = PyPDFLoader(tmp.name)
+                    docs.extend(loader.load())
+            else:
+                print(f"Skipped empty or missing file: {filename}")
+        except Exception as e:
+            print(f"Error loading {filename}: {e}")
     return docs
 
 def get_vector_store():
     docs = load_documents()
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    chunks = text_splitter.split_documents(docs)
-    embeddings = OpenAIEmbeddings()
-    vectordb = FAISS.from_documents(chunks, embeddings)
-    return vectordb
+    text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    texts = text_splitter.split_documents(docs)
+    embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+    return FAISS.from_documents(texts, embeddings)
 
 retriever = get_vector_store().as_retriever()
-qa_chain = RetrievalQA.from_chain_type(llm=ChatOpenAI(), retriever=retriever)
+chat_model = ChatOpenAI(openai_api_key=OPENAI_API_KEY)
 
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    data = request.form
-    msg = data.get("message")
-    sender = data.get("from")
+@app.post("/webhook")
+async def webhook(request: Request):
+    data = await request.json()
+    message = data["message"].strip()
+    sender = data["sender"]
 
-    if not msg:
-        return "OK"
+    qa = RetrievalQA.from_chain_type(llm=chat_model, retriever=retriever)
+    answer = qa.run(message)
 
-    answer = qa_chain.run(msg)
-    send_message(sender, answer)
-    return "OK"
+    payload = {
+        "token": os.environ["ULTRAMSG_TOKEN"],
+        "to": sender,
+        "body": answer
+    }
 
-def send_message(to, message):
-    url = f"https://api.ultramsg.com/{ULTRAMSG_INSTANCE_ID}/messages/chat"
-    payload = {"to": to, "body": message}
-    headers = {"Content-Type": "application/json", "token": ULTRAMSG_TOKEN}
-    requests.post(url, json=payload, headers=headers)
+    requests.post(
+        f"https://api.ultramsg.com/{os.environ['ULTRAMSG_INSTANCE_ID']}/messages/chat",
+        data=payload
+    )
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    return {"status": "success"}
