@@ -1,10 +1,8 @@
 fastapi
 uvicorn
+openai
 langchain
 langchain-community
-openai
-faiss-cpu
-pypdf
-requests
-beautifulsoup4
 tiktoken
+pypdf
+faiss-cpu
