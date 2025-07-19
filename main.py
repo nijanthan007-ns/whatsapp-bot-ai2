@@ -6,7 +6,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import FAISS
 from langchain.chains import RetrievalQA
-from langchain.chat_models import ChatOpenAI
+from langchain_community.chat_models import ChatOpenAI
 
 OPENAI_API_KEY = "sk-proj-..."  # Replace with your real key
 ULTRAMSG_INSTANCE_ID = "instance133623"
@@ -22,6 +22,7 @@ def load_documents():
     filenames = [
         "machine_manual1.pdf",
         "wiring_guide.pdf"
+        # Add more PDF names here
     ]
     for filename in filenames:
         url = f"{GITHUB_DOCS_URL}{filename}"
