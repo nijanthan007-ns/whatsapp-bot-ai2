@@ -1,6 +1,6 @@
-langchain==0.3.26
-langchain-community==0.3.27
-langchain-openai==0.1.6
+langchain==0.1.16
+langchain-community==0.0.26
+langchain-openai==0.0.8
 openai==1.25.0
 tiktoken==0.7.0
 faiss-cpu
